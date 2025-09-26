@@ -12,4 +12,4 @@ Will 煒培
 - [HW5](https://github.com/wilburkwan/net_learning/blob/main/HW05.ipynb)
 
 - [HW6](https://github.com/wilburkwan/net_learning/blob/main/HW06.ipynb)
-系統 demo：https://youtu.be/Ytk747md0DE
+- 系統 demo：https://youtu.be/Ytk747md0DE
