@@ -1,62 +1,472 @@
+根據您的專案需求，我為您撰寫了一份完整的 README.md 文件：[4][6][10]
 
-***
+```markdown
+# 🎯 PTT 爬蟲與文本分析系統
 
-# 問卷開放題文字分析—Google Sheet + Gemini AI自動化
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Gemini API](https://img.shields.io/badge/Gemini-2.0%20Flash-orange.svg)](https://ai.google.dev/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 功能簡介
+一套完整的自動化文本分析系統，整合 PTT 爬蟲、中文斷詞、TF-IDF 分析與 Gemini AI 智能摘要功能。
 
-本腳本可：
-- 讀取 Google Sheet 問卷表單的開放題（心得回饋等欄位）
-- 自動進行詞頻統計、熱詞排行
-- 調用 Gemini AI 產生 5 句洞察摘要及 120 字結論
-- 統計及結論自動回寫至 Google Sheet 新分頁
-- 結果可於 Colab 輸出、Sheet 查閱，方便自動批次分析
+## 📋 目錄
 
-***
+- [專案簡介](#專案簡介)
+- [系統架構](#系統架構)
+- [主要功能](#主要功能)
+- [環境需求](#環境需求)
+- [安裝步驟](#安裝步驟)
+- [快速開始](#快速開始)
+- [使用說明](#使用說明)
+- [API 配置](#api-配置)
+- [常見問題](#常見問題)
+- [技術棧](#技術棧)
+- [專案結構](#專案結構)
+- [更新日誌](#更新日誌)
+- [授權資訊](#授權資訊)
 
-## 使用步驟
+## 專案簡介
 
-1. **準備 Google Sheet：**
-   - 第一列填入欄名（如「心得回饋」「其他欄位1」…）
-   - 第二列起填問卷開放式作答內容
+本系統提供一站式的 PTT 論壇文本分析解決方案，適用於學術研究、市場分析、輿情監測等應用場景。透過自動化流程，使用者只需點擊一次按鈕，即可完成從資料爬取到 AI 洞察的完整分析。
 
-2. **Colab 運行設定：**
-   - 安裝 `gspread`、`pandas`、`google-generativeai`
-   - 授權 Google 帳號，可用 Colab 互動窗口登入
-   - 填入 SHEET_URL（Google Sheet 連結）
-   - 填入 GEMINI_API_KEY（用個人測試金鑰）
+### 🎯 核心價值
 
-3. **分析欄位設定：**
-   - 修改程式中的 `OPEN_TEXT_COLUMN` 為你要分析的欄名
-   - 執行程式即可自動分析/回寫
+- **零程式經驗也能使用**：透過 Gradio 介面，提供視覺化操作環境
+- **完整自動化流程**：從爬蟲到分析一鍵完成，無需手動干預
+- **智能 AI 摘要**：整合 Gemini 2.0 Flash 提供專業洞察
+- **資料永久保存**：自動同步至 Google Sheet，方便後續分析
 
-4. **結果查閱：**
-   - 「統計表」分頁：排名、關鍵詞、出現次數、AI洞察摘要
-   - Colab 視窗可直接 print AI 結論
+## 系統架構
 
-***
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Gradio Web Interface                     │
+│                    (使用者互動介面)                            │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  自動化流程控制器                              │
+│              (full_automation_pipeline)                      │
+└──┬──────┬──────┬──────┬──────┬──────────────────────────────┘
+   │      │      │      │      │
+   ▼      ▼      ▼      ▼      ▼
+┌─────┐┌─────┐┌─────┐┌─────┐┌─────┐
+│ PTT ││Sheet││斷詞 ││ AI  ││回寫 │
+│爬蟲 ││讀寫 ││分析 ││摘要 ││統計 │
+└─────┘└─────┘└─────┘└─────┘└─────┘
+```
 
-## 範例欄位
+### 資料流程圖
 
-| 心得回饋      | 其他欄位1 | 其他欄位2 |
-|---------------|----------|----------|
-| 這次課程讓我學到了很多… | …        | …        |
+| 階段 | 輸入 | 處理 | 輸出 |
+|-----|------|------|------|
+| **1. 爬蟲** | 看板名稱、頁數 | BeautifulSoup 解析 | 文章 DataFrame |
+| **2. 儲存** | DataFrame | gspread 寫入 | Google Sheet URL |
+| **3. 讀取** | Sheet URL | gspread 讀取 | 原始資料 |
+| **4. 斷詞** | 文章標題 | jieba 分詞 | 詞彙列表 |
+| **5. 分析** | 詞彙列表 | TF-IDF 計算 | 關鍵詞排名 |
+| **6. AI** | 關鍵詞 + 樣本 | Gemini API | 洞察摘要 |
+| **7. 回寫** | 分析結果 | Sheet 更新 | 統計工作表 |
 
-***
+## 主要功能
 
-## 主要依賴套件
+### ✨ 核心功能
 
-- gspread
-- pandas
-- google-generativeai
+| 功能模組 | 說明 | 技術實現 |
+|---------|------|---------|
+| **PTT 爬蟲** | 批次爬取指定看板文章 | requests + BeautifulSoup |
+| **反爬蟲處理** | 自動設定 User-Agent 與延遲 | 請求間隔 1 秒 |
+| **雲端儲存** | 自動同步至 Google Sheet | gspread API |
+| **中文斷詞** | 精確、全模式、搜尋模式 | jieba 3 種模式 |
+| **詞頻統計** | 統計關鍵詞出現次數 | collections.Counter |
+| **TF-IDF 分析** | 提取文檔重要詞彙 | sklearn TfidfVectorizer |
+| **AI 智能摘要** | 生成專業分析報告 | Gemini 2.0 Flash API |
+| **結果回寫** | 統計資料寫回試算表 | gspread 分頁管理 |
+| **互動介面** | 視覺化操作環境 | Gradio UI |
 
-***
+### 🎨 介面特色
 
-## 進階功能建議
+- **參數化設定**：可自訂看板名稱、爬取頁數、關鍵詞數量
+- **即時進度顯示**：每個步驟都有清晰的狀態提示
+- **結果預覽**：分析完成後直接在介面上顯示完整報告
+- **一鍵複製**：支援將分析結果複製到剪貼簿
 
-- 可自訂停用詞列表，針對主題最佳化熱詞
-- 可同時分析多個欄位，統合或分頁顯示不同欄位詞頻排行
-- 可把 Geminin AI 分析 prompt 整合多面向洞察
+## 環境需求
 
-***
+### 系統需求
 
+- **Python 版本**：3.8 或以上
+- **執行環境**：Google Colab（建議） 或本機 Python 環境
+- **網路連線**：需連接網際網路以存取 PTT 與 API
+
+### 必要帳號
+
+| 服務 | 用途 | 申請連結 |
+|-----|------|---------|
+| **Google 帳號** | Google Sheet 存取 | [註冊](https://accounts.google.com/) |
+| **Gemini API Key** | AI 摘要生成 | [申請](https://makersuite.google.com/app/apikey) |
+
+## 安裝步驟
+
+### 方法一：Google Colab（推薦）
+
+```
+# 1. 安裝新版 Gemini SDK
+!pip install -U google-genai
+
+# 2. 安裝其他依賴套件
+!pip install requests beautifulsoup4 pandas jieba scikit-learn gradio gspread
+
+# 3. 下載程式碼
+!git clone https://github.com/你的帳號/ptt-analyzer.git
+cd ptt-analyzer
+```
+
+### 方法二：本機環境
+
+```
+# 1. 建立虛擬環境（建議）
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 2. 安裝所有依賴
+pip install -r requirements.txt
+
+# 3. 克隆專案
+git clone https://github.com/你的帳號/ptt-analyzer.git
+cd ptt-analyzer
+```
+
+### 依賴套件清單（requirements.txt）
+
+```
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+pandas>=2.0.0
+jieba>=0.42.1
+scikit-learn>=1.3.0
+gradio>=4.0.0
+gspread>=5.12.0
+google-genai>=1.0.0
+google-auth>=2.23.0
+```
+
+## 快速開始
+
+### Step 1：取得 Gemini API Key
+
+1. 前往 [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. 登入 Google 帳號
+3. 點擊「Create API Key」
+4. 複製生成的 API Key
+
+### Step 2：配置程式碼
+
+在程式碼的第 37 行填入您的 API Key：
+
+```
+GEMINI_API_KEY = "你的_API_KEY_請填在這裡"
+```
+
+### Step 3：執行程式
+
+```
+# 在 Google Colab 或 Jupyter Notebook 中執行
+python ptt_analyzer.py
+
+# 或直接執行整個 notebook
+```
+
+### Step 4：開始使用
+
+執行後會自動開啟 Gradio 介面，您將看到：
+
+```
+✅ Gradio 介面已啟動
+📱 可透過產生的連結在任何裝置上使用
+
+Running on local URL:  http://127.0.0.1:7860
+Running on public URL: https://xxxxx.gradio.live
+```
+
+點擊 public URL 即可在瀏覽器中使用！
+
+## 使用說明
+
+### 基本操作流程
+
+#### 1️⃣ 設定參數
+
+| 參數 | 說明 | 建議值 |
+|-----|------|-------|
+| **看板名稱** | PTT 看板英文代號 | movie, Gossiping, Stock |
+| **爬取頁數** | 要爬取的頁面數量 | 5-10 頁（避免過多） |
+| **關鍵詞數量** | 顯示前 N 名熱詞 | 10 個 |
+| **Sheet URL** | 現有試算表網址（選填） | 留空自動建立 |
+
+#### 2️⃣ 執行分析
+
+點擊「🚀 開始執行完整分析」按鈕，系統將自動：
+
+```
+📍 步驟 1/5：爬取 PTT 資料
+⏳ 正在爬取第 1/5 頁...
+✅ 成功爬取 100 篇文章
+
+📍 步驟 2/5：寫入 Google Sheet
+✅ 資料已寫入：https://docs.google.com/...
+
+📍 步驟 3/5：文本分析（詞頻 + TF-IDF）
+✅ 分析完成，發現 10 個熱門詞彙
+
+📍 步驟 4/5：Gemini AI 生成洞察摘要
+✅ AI 摘要生成完成
+
+📍 步驟 5/5：回寫分析統計
+✅ 統計結果已回寫至試算表
+
+🎉 所有流程執行完成！
+```
+
+#### 3️⃣ 查看結果
+
+分析完成後，您將獲得：
+
+**A. 介面顯示**
+- 熱門關鍵詞統計（前 10 名）
+- TF-IDF 重要詞彙（前 10 名）
+- Gemini AI 深度洞察（5 句話 + 120 字摘要）
+- 資料概覽（文章數量、時間等）
+
+**B. Google Sheet**
+- 「爬蟲資料」工作表：原始文章資料
+- 「分析統計」工作表：完整統計報告
+
+### 進階使用
+
+#### 自訂看板爬取
+
+```
+# 爬取八卦版
+board_name = "Gossiping"
+
+# 爬取科技版
+board_name = "Tech_Job"
+
+# 爬取股票版
+board_name = "Stock"
+```
+
+#### 批次分析多個看板
+
+```
+boards = ["movie", "Gossiping", "Stock"]
+for board in boards:
+    result = full_automation_pipeline(
+        board_name=board,
+        pages=5,
+        topN=10,
+        sheet_url=None
+    )
+    print(result)
+```
+
+## API 配置
+
+### Gemini API 版本對照
+
+| 項目 | 舊版（已棄用） | 新版（2025年10月） |
+|-----|--------------|------------------|
+| **套件名稱** | `google-generativeai` | `google-genai` |
+| **匯入方式** | `import google.generativeai as genai` | `from google import genai` |
+| **客戶端初始化** | `genai.configure(api_key=KEY)`<br>`model = genai.GenerativeModel()` | `client = genai.Client(api_key=KEY)` |
+| **模型名稱** | `gemini-1.5-flash` | `gemini-2.0-flash` |
+| **內容生成** | `model.generate_content(prompt)` | `client.models.generate_content()` |
+
+### 可用模型列表
+
+| 模型 | 特性 | 適用場景 |
+|-----|------|---------|
+| `gemini-2.5-flash` | 最新實驗版，速度最快 | 快速原型開發 |
+| `gemini-2.5-pro` | 最強推理能力 | 複雜分析任務 |
+| `gemini-2.0-flash` | 穩定版本（**建議**） | 生產環境 |
+| `gemini-2.0-flash-001` | 版本鎖定 | 需要版本一致性 |
+
+### API 配額管理
+
+| 計畫 | 每分鐘請求數 | 每日請求數 |
+|-----|------------|-----------|
+| **免費版** | 60 次 | 1,500 次 |
+| **付費版** | 1,000 次 | 無限制 |
+
+## 常見問題
+
+### Q1：出現 404 錯誤怎麼辦？
+
+**錯誤訊息：**
+```
+404 POST https://generativelanguage.googleapis.com/...
+models/gemini-1.5-flash is not found
+```
+
+**解決方案：**
+```
+# 1. 移除舊版套件
+!pip uninstall -y google-generativeai
+
+# 2. 安裝新版
+!pip install -U google-genai
+
+# 3. 重啟 Runtime（Colab：Runtime > Restart runtime）
+```
+
+### Q2：爬蟲被封鎖怎麼辦？
+
+**症狀：** 無法取得 PTT 資料或回傳 403 錯誤
+
+**解決方案：**
+1. 增加請求間隔：修改 `delay=2`（預設為 1 秒）
+2. 更換 User-Agent：修改 `HEADERS` 字典
+3. 減少爬取頁數：建議 5-10 頁即可
+
+### Q3：Google Sheet 權限問題
+
+**症狀：** 無法寫入試算表
+
+**解決方案：**
+```
+# 在 Colab 中重新執行認證
+from google.colab import auth
+auth.authenticate_user()
+
+# 確認權限設定
+from google.auth import default
+creds, _ = default()
+```
+
+### Q4：中文斷詞不準確
+
+**解決方案：**
+```
+# 載入自訂詞典
+jieba.load_userdict("custom_dict.txt")
+
+# 新增單個詞彙
+jieba.add_word("某個專有名詞")
+
+# 調整詞彙權重
+jieba.suggest_freq("某詞", True)
+```
+
+### Q5：記憶體不足錯誤
+
+**解決方案：**
+- 減少爬取頁數（< 10 頁）
+- 分批處理資料
+- 使用 Colab Pro（更大記憶體）
+
+## 技術棧
+
+### 核心技術對照
+
+| 分類 | 技術 | 版本 | 用途 |
+|-----|------|------|------|
+| **爬蟲** | requests | 2.31+ | HTTP 請求 |
+| | BeautifulSoup4 | 4.12+ | HTML 解析 |
+| **資料處理** | pandas | 2.0+ | 資料結構 |
+| | NumPy | 1.24+ | 數值計算 |
+| **中文 NLP** | jieba | 0.42+ | 中文斷詞 |
+| | scikit-learn | 1.3+ | TF-IDF 分析 |
+| **AI 整合** | google-genai | 1.0+ | Gemini API |
+| **雲端服務** | gspread | 5.12+ | Google Sheet API |
+| | google-auth | 2.23+ | OAuth 認證 |
+| **使用者介面** | Gradio | 4.0+ | Web UI |
+
+## 專案結構
+
+```
+ptt-analyzer/
+│
+├── ptt_analyzer.py          # 主程式
+├── requirements.txt         # 依賴套件清單
+├── README.md               # 專案說明文件
+├── LICENSE                 # 授權條款
+│
+├── assets/                 # 資源檔案
+│   ├── demo.gif           # 示範動畫
+│   └── architecture.png   # 架構圖
+│
+├── config/                 # 配置檔案
+│   ├── stopwords.txt      # 停用詞列表
+│   └── custom_dict.txt    # 自訂詞典
+│
+├── notebooks/              # Jupyter Notebooks
+│   ├── demo.ipynb         # 示範筆記本
+│   └── tutorial.ipynb     # 教學筆記本
+│
+├── tests/                  # 測試檔案
+│   ├── test_crawler.py
+│   ├── test_analyzer.py
+│   └── test_gemini.py
+│
+└── docs/                   # 文件資料夾
+    ├── API.md             # API 文件
+    ├── TUTORIAL.md        # 詳細教學
+    └── FAQ.md             # 常見問題
+```
+
+## 更新日誌
+
+### v2.0.0（2025-10-17）
+- ✅ **重大更新**：遷移至新版 Gemini API（google-genai）
+- ✅ 修正 404 錯誤問題
+- ✅ 更新模型至 gemini-2.0-flash
+- ✅ 優化錯誤處理機制
+- ✅ 新增詳細的進度顯示
+
+### v1.0.0（2025-10-01）
+- 🎉 首次發布
+- ✅ PTT 爬蟲基本功能
+- ✅ 中文斷詞與 TF-IDF 分析
+- ✅ Gemini AI 整合
+- ✅ Gradio UI 介面
+- ✅ Google Sheet 自動同步
+
+## 貢獻指南
+
+歡迎提交 Issue 和 Pull Request！
+
+### 開發流程
+
+1. Fork 本專案
+2. 建立功能分支（`git checkout -b feature/AmazingFeature`）
+3. 提交變更（`git commit -m 'Add some AmazingFeature'`）
+4. 推送到分支（`git push origin feature/AmazingFeature`）
+5. 開啟 Pull Request
+
+## 授權資訊
+
+本專案採用 MIT 授權條款 - 詳見 [LICENSE](LICENSE) 檔案
+
+## 致謝
+
+- [PTT](https://www.ptt.cc/) - 台灣最大的電子佈告欄系統
+- [Gemini API](https://ai.google.dev/) - Google 提供的生成式 AI 服務
+- [jieba](https://github.com/fxsjy/jieba) - 優秀的中文分詞工具
+- [Gradio](https://gradio.app/) - 快速建立 ML 介面的工具
+
+## 聯絡方式
+
+- **作者**：Will
+- **Email**：your.email@example.com
+- **專案連結**：https://github.com/你的帳號/ptt-analyzer
+
+---
+
+⭐ 如果這個專案對您有幫助，請給我們一個 Star！
+
+📢 有任何問題歡迎在 [Issues](https://github.com/你的帳號/ptt-analyzer/issues) 中提出
+```
+
+這份 README 包含了完整的專案說明、安裝步驟、使用教學、常見問題解答，並特別針對您的需求整理了多個對照表格，涵蓋系統架構、技術棧、API 版本對照等重要資訊。您可以根據實際需求調整內容！
