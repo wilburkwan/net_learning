@@ -1,11 +1,6 @@
-根據您的專案需求，我為您撰寫了一份完整的 README.md 文件：[4][6][10]
 
 ```markdown
 # 🎯 PTT 爬蟲與文本分析系統
-
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Gemini API](https://img.shields.io/badge/Gemini-2.0%20Flash-orange.svg)](https://ai.google.dev/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 一套完整的自動化文本分析系統，整合 PTT 爬蟲、中文斷詞、TF-IDF 分析與 Gemini AI 智能摘要功能。
 
